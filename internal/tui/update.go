@@ -17,8 +17,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
+		m.termWidth = msg.Width
+		m.termHeight = msg.Height
 		return m, nil
 
 	case portsLoadedMsg:

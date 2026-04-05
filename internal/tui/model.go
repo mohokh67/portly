@@ -35,20 +35,23 @@ type Model struct {
 	filterInput string
 	filtered    []int // indices into processes that match filter
 	killResults []string
-	err         error
-	width       int
-	height      int
+	version    string
+	err        error
+	termWidth  int
+	termHeight int
 }
 
 // Config holds TUI startup options.
 type Config struct {
 	IconStyle icons.IconStyle
+	Version   string
 }
 
 func newModel(cfg Config) Model {
 	return Model{
 		selected:  make(map[int]bool),
 		iconStyle: cfg.IconStyle,
+		version:   cfg.Version,
 		mode:      modeListening,
 		state:     stateList,
 	}

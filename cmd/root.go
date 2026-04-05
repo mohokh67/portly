@@ -13,6 +13,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var appVersion string
+
 var rootCmd = &cobra.Command{
 	Use:   "portly [port]",
 	Short: "Manage ports interactively",
@@ -21,6 +23,7 @@ var rootCmd = &cobra.Command{
 }
 
 func Execute(version string) {
+	appVersion = version
 	rootCmd.Version = version
 	rootCmd.PersistentFlags().String("icons", "auto", "icon style: nerdfont|emoji|none|auto")
 	rootCmd.PersistentFlags().Bool("no-color", false, "disable color output")
@@ -36,7 +39,7 @@ func runRoot(cmd *cobra.Command, args []string) error {
 		if style == icons.Auto {
 			style = icons.DetectStyle()
 		}
-		return tui.Run(tui.Config{IconStyle: style})
+		return tui.Run(tui.Config{IconStyle: style, Version: appVersion})
 	}
 
 	if len(args) == 1 {

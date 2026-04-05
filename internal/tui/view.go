@@ -9,96 +9,190 @@ import (
 	"github.com/mohokh67/portly/internal/scanner"
 )
 
+const (
+	colPort    = 7
+	colProto   = 5
+	colPID     = 7
+	colUser    = 12
+	colAddress = 15
+	colSel     = 2
+	// total fixed chars: sel + port + proto + pid + user + address + 5 spaces between 6 cols
+	colsFixed = colSel + colPort + colProto + colPID + colUser + colAddress + 5
+)
+
 var (
-	headerStyle   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("8")).Padding(0, 1)
-	cursorStyle   = lipgloss.NewStyle().BorderLeft(true).BorderStyle(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("69")).PaddingLeft(1)
-	selectedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
+	headerStyle = lipgloss.NewStyle().
+			Background(lipgloss.Color("63")).
+			Foreground(lipgloss.Color("255")).
+			Bold(true)
+
+	statusStyle = lipgloss.NewStyle().
+			Background(lipgloss.Color("63")).
+			Foreground(lipgloss.Color("255")).
+			Bold(true).
+			Padding(0, 1)
+
+	filterStyle = lipgloss.NewStyle().
+			Background(lipgloss.Color("236")).
+			Foreground(lipgloss.Color("255"))
+
+	// cursor row: subtle dark highlight, white text
+	cursorRowStyle = lipgloss.NewStyle().
+			Background(lipgloss.Color("237")).
+			Foreground(lipgloss.Color("255"))
+
+	// selected row: bold yellow
+	selectedRowStyle = lipgloss.NewStyle().
+				Background(lipgloss.Color("220")).
+				Foreground(lipgloss.Color("0"))
+
 	portStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("69"))
 	dimStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
 	userStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("141"))
-	protoTCP      = lipgloss.NewStyle().Foreground(lipgloss.Color("76"))
-	protoUDP      = lipgloss.NewStyle().Foreground(lipgloss.Color("196"))
-	statusStyle   = lipgloss.NewStyle().Background(lipgloss.Color("236")).Foreground(lipgloss.Color("8")).Padding(0, 1)
+	protoTCPStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("76"))
+	protoUDPStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("196"))
 	errorStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Bold(true)
 	successStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("76"))
-	titleStyle    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("69")).Padding(0, 1)
+	titleStyle    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("69"))
+	versionStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
 )
+
+func (m Model) termW() int {
+	if m.termWidth == 0 {
+		return 80
+	}
+	return m.termWidth
+}
+
+func (m Model) processColWidth() int {
+	w := m.termW() - colsFixed - 1 // 1 extra sep before process col
+	if w < 16 {
+		w = 16
+	}
+	return w
+}
+
+// renderRow builds a full-width row string. All cells use lipgloss Width()
+// which is ANSI-aware, so colored content never breaks column alignment.
+func (m Model) renderRow(p scanner.Process, idx int, isCursor bool) string {
+	isSelected := m.selected[idx]
+	colProcess := m.processColWidth()
+
+	// Build process label. All emoji in the table have correct go-runewidth
+	// values (no variation selectors), so lipgloss.Width is accurate.
+	icon := icons.Resolve(p.Name, m.iconStyle)
+	label := p.Name
+	if icon != "" {
+		label = icon + " " + p.Name
+	}
+	// Truncate to colProcess visible columns
+	for lipgloss.Width(label) > colProcess {
+		runes := []rune(label)
+		label = string(runes[:len(runes)-1])
+	}
+
+	// choose base style for this row
+	var s lipgloss.Style
+	switch {
+	case isSelected:
+		s = selectedRowStyle
+	case isCursor:
+		s = cursorRowStyle
+	default:
+		// normal row — each cell keeps its own color
+		sel := "  "
+		portCell := portStyle.Width(colPort).Render(fmt.Sprintf("%d", p.Port))
+		var protoCell string
+		if p.Proto == "UDP" {
+			protoCell = protoUDPStyle.Width(colProto).Render(p.Proto)
+		} else {
+			protoCell = protoTCPStyle.Width(colProto).Render(p.Proto)
+		}
+		processCell := lipgloss.NewStyle().Width(colProcess).Render(label)
+		pidCell := lipgloss.NewStyle().Width(colPID).Render(fmt.Sprintf("%d", p.PID))
+		userCell := userStyle.Width(colUser).Render(p.User)
+		addrCell := dimStyle.Width(colAddress).Render(p.Address)
+		return sel + portCell + " " + protoCell + " " + processCell + " " + pidCell + " " + userCell + " " + addrCell
+	}
+
+	// highlighted row — uniform style, no per-cell colors
+	return s.Width(colSel).Render("") +
+		s.Width(colPort).Render(fmt.Sprintf("%d", p.Port)) + " " +
+		s.Width(colProto).Render(p.Proto) + " " +
+		s.Width(colProcess).Render(label) + " " +
+		s.Width(colPID).Render(fmt.Sprintf("%d", p.PID)) + " " +
+		s.Width(colUser).Render(p.User) + " " +
+		s.Width(colAddress).Render(p.Address)
+}
 
 func (m Model) View() string {
 	if m.err != nil {
 		return errorStyle.Render(fmt.Sprintf("error: %v\n\nPress q to quit.", m.err))
 	}
 
+	w := m.termW()
 	var b strings.Builder
 
+	// ── title bar ─────────────────────────────────────────────────
 	modeLabel := "listening"
 	if m.mode == modeAll {
 		modeLabel = "all connections"
 	}
-	b.WriteString(titleStyle.Render(fmt.Sprintf("portly — %s", modeLabel)))
-	b.WriteString("\n")
+	ver := m.version
+	if ver == "" {
+		ver = "dev"
+	}
+	left := titleStyle.Render("portly") + dimStyle.Render("  "+modeLabel)
+	right := versionStyle.Render("v" + ver)
+	gap := w - lipgloss.Width(left) - lipgloss.Width(right)
+	if gap < 1 {
+		gap = 1
+	}
+	b.WriteString(left + strings.Repeat(" ", gap) + right + "\n")
 
-	b.WriteString(headerStyle.Render(
-		fmt.Sprintf("%-8s %-6s %-24s %-8s %-12s %s",
-			"PORT", "PROTO", "PROCESS", "PID", "USER", "ADDRESS"),
-	))
-	b.WriteString("\n")
+	// ── header ────────────────────────────────────────────────────
+	// Built identically to data rows: sel+port+space+proto+space+...
+	// (no separator between sel and port, matching renderRow layout)
+	colProcess := m.processColWidth()
+	h := headerStyle
+	sp := h.Render(" ")
+	headerRow := h.Width(colSel).Render("") +
+		h.Width(colPort).Render("PORT") + sp +
+		h.Width(colProto).Render("PROTO") + sp +
+		h.Width(colProcess).Render("PROCESS") + sp +
+		h.Width(colPID).Render("PID") + sp +
+		h.Width(colUser).Render("USER") + sp +
+		h.Width(colAddress).Render("ADDRESS")
+	b.WriteString(headerRow + "\n")
 
+	// ── rows ──────────────────────────────────────────────────────
 	visible := m.visibleIndices()
-
 	if len(visible) == 0 {
+		msg := "  No listening ports"
 		if m.filterInput != "" {
-			b.WriteString(dimStyle.Render("  No matching ports\n"))
-		} else {
-			b.WriteString(dimStyle.Render("  No listening ports\n"))
+			msg = "  No matching ports"
 		}
+		b.WriteString(dimStyle.Render(msg) + "\n")
+	}
+	for i, idx := range visible {
+		b.WriteString(m.renderRow(m.processes[idx], idx, i == m.cursor) + "\n")
 	}
 
-	for i, idx := range visible {
-		p := m.processes[idx]
-		icon := icons.Resolve(p.Name, m.iconStyle)
-		if icon != "" {
-			icon += " "
-		}
-
-		proto := protoTCP.Render(p.Proto)
-		if p.Proto == "UDP" {
-			proto = protoUDP.Render(p.Proto)
-		}
-
-		sel := "  "
-		if m.selected[idx] {
-			sel = selectedStyle.Render("● ")
-		}
-
-		line := fmt.Sprintf("%s%-8s %-6s %-24s %-8d %-12s %s",
-			sel,
-			portStyle.Render(fmt.Sprintf("%d", p.Port)),
-			proto,
-			icon+p.Name,
-			p.PID,
-			userStyle.Render(p.User),
-			dimStyle.Render(p.Address),
-		)
-
-		if i == m.cursor {
-			b.WriteString(cursorStyle.Render(line))
-		} else {
-			b.WriteString("  " + line)
-		}
+	// ── padding ───────────────────────────────────────────────────
+	used := 2 + len(visible) + 2 // title + header + rows + footer + spare
+	if m.termHeight > 0 && m.termHeight > used {
+		b.WriteString(strings.Repeat("\n", m.termHeight-used))
+	} else {
 		b.WriteString("\n")
 	}
 
-	b.WriteString("\n")
-
+	// ── footer ────────────────────────────────────────────────────
 	switch m.state {
 	case stateFilter:
-		b.WriteString(statusStyle.Render(fmt.Sprintf("/ %s", m.filterInput)) + "  esc to clear\n")
+		b.WriteString(filterStyle.Width(w).Render(fmt.Sprintf(" / %s", m.filterInput)) + "\n")
 	case stateConfirm:
-		targets := m.killTargets()
-		prompt := killPrompt(targets)
-		b.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("214")).Bold(true).Render(prompt))
-		b.WriteString("\n")
+		prompt := killPrompt(m.killTargets())
+		b.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("214")).Bold(true).Width(w).Render(prompt) + "\n")
 	case stateResult:
 		for _, r := range m.killResults {
 			if strings.HasPrefix(r, "✓") {
@@ -109,8 +203,7 @@ func (m Model) View() string {
 		}
 		b.WriteString(dimStyle.Render("press any key to continue") + "\n")
 	default:
-		b.WriteString(statusStyle.Render("↑↓ navigate  space select  k kill  t toggle  / search  q quit"))
-		b.WriteString("\n")
+		b.WriteString(statusStyle.Width(w).Render(" ↑↓ navigate   space select   k kill   t toggle   / search   q quit") + "\n")
 	}
 
 	return b.String()

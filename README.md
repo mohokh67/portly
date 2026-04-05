@@ -50,7 +50,26 @@ portly kill 3000        # kill immediately, no prompt
 
 ## Icons
 
-portly shows icons next to process names. For the best experience install a [Nerd Font](https://www.nerdfonts.com/font-downloads) (recommended: **JetBrains Mono NF** or **FiraCode Nerd Font**) and set it as your terminal font.
+portly shows icons next to process names. By default it auto-detects your terminal and falls back to emoji if no Nerd Font is detected — so it works out of the box.
+
+For the best experience, install a [Nerd Font](https://www.nerdfonts.com/font-downloads) and set it as your terminal font:
+
+**macOS (Homebrew)**
+```bash
+brew install --cask font-jetbrains-mono-nerd-font
+# or: brew install --cask font-fira-code-nerd-font
+```
+Then set **JetBrainsMono Nerd Font** (or similar) as your terminal's font in its preferences.
+
+**Linux**
+```bash
+mkdir -p ~/.local/share/fonts
+curl -fLo ~/.local/share/fonts/JetBrainsMono.zip \
+  https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.zip
+unzip ~/.local/share/fonts/JetBrainsMono.zip -d ~/.local/share/fonts/JetBrainsMono
+fc-cache -fv
+```
+Then set the font in your terminal emulator preferences.
 
 | Process | Emoji | Nerd Font |
 |---------|-------|-----------|
