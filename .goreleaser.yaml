@@ -25,6 +25,23 @@ archives:
 checksum:
   name_template: "checksums.txt"
 
+brews:
+  - name: portly
+    repository:
+      owner: mohokh67
+      name: homebrew-portly
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    commit_author:
+      name: mohokh67
+      email: mohokh67@users.noreply.github.com
+    homepage: "https://github.com/mohokh67/portly"
+    description: "CLI for managing ports — list, inspect, and kill by port number"
+    license: "MIT"
+    test: |
+      system "#{bin}/portly", "--version"
+    install: |
+      bin.install "portly"
+
 release:
   github:
     owner: mohokh67
