@@ -6,10 +6,10 @@ import "strings"
 type IconStyle int
 
 const (
-	Auto      IconStyle = iota // detect from environment
-	NerdFont                   // Nerd Font glyphs
-	Emoji                      // Unicode emoji
-	None                       // no icons
+	Auto     IconStyle = iota // detect from environment
+	NerdFont                  // Nerd Font glyphs
+	Emoji                     // Unicode emoji
+	None                      // no icons
 )
 
 type entry struct {
