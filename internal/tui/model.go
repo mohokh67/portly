@@ -35,10 +35,10 @@ type Model struct {
 	filterInput string
 	filtered    []int // indices into processes that match filter
 	killResults []string
-	version    string
-	err        error
-	termWidth  int
-	termHeight int
+	version     string
+	err         error
+	termWidth   int
+	termHeight  int
 }
 
 // Config holds TUI startup options.
