@@ -1,0 +1,7 @@
+dist/
+*.exe
+*.test
+
+.superpowers/
+docs/
+homebrew-tap/
