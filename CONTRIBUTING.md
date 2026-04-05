@@ -55,6 +55,18 @@ Create `cmd/<name>.go`, register it with `rootCmd.AddCommand(...)` in an `init()
 - Rendering → `internal/tui/view.go`
 - State/model fields → `internal/tui/model.go`
 
+## Versioning and releases
+
+Every merge to `main` triggers an automatic release. The version bump is determined by your commit message prefix:
+
+| Prefix | Bump | Example |
+|--------|------|---------|
+| `feat:` | minor | `feat(tui): add mouse support` |
+| `fix:`, `chore:`, `docs:`, etc. | patch | `fix(scanner): handle lsof exit code 1` |
+| `BREAKING CHANGE` in footer | major | `feat!: remove --no-color flag` |
+
+Use conventional commit format: `<type>(<scope>): <description>`
+
 ## Pull request checklist
 
 - [ ] `go test ./... -race` passes
