@@ -72,26 +72,33 @@ func (m Model) processColWidth() int {
 	return w
 }
 
+// truncate clips s to at most maxW visible columns.
+func truncate(s string, maxW int) string {
+	for lipgloss.Width(s) > maxW {
+		runes := []rune(s)
+		s = string(runes[:len(runes)-1])
+	}
+	return s
+}
+
 // renderRow builds a full-width row string. All cells use lipgloss Width()
 // which is ANSI-aware, so colored content never breaks column alignment.
 func (m Model) renderRow(p scanner.Process, idx int, isCursor bool) string {
 	isSelected := m.selected[idx]
 	colProcess := m.processColWidth()
 
-	// Build process label. All emoji in the table have correct go-runewidth
-	// values (no variation selectors), so lipgloss.Width is accurate.
 	icon := icons.Resolve(p.Name, m.iconStyle)
 	label := p.Name
 	if icon != "" {
 		label = icon + " " + p.Name
 	}
-	// Truncate to colProcess visible columns
-	for lipgloss.Width(label) > colProcess {
-		runes := []rune(label)
-		label = string(runes[:len(runes)-1])
-	}
+	label = truncate(label, colProcess)
 
-	// choose base style for this row
+	port := fmt.Sprintf("%d", p.Port)
+	pid := fmt.Sprintf("%d", p.PID)
+	user := truncate(p.User, colUser)
+	addr := truncate(p.Address, colAddress)
+
 	var s lipgloss.Style
 	switch {
 	case isSelected:
@@ -99,30 +106,28 @@ func (m Model) renderRow(p scanner.Process, idx int, isCursor bool) string {
 	case isCursor:
 		s = cursorRowStyle
 	default:
-		// normal row — each cell keeps its own color
-		sel := "  "
-		portCell := portStyle.Width(colPort).Render(fmt.Sprintf("%d", p.Port))
 		var protoCell string
 		if p.Proto == "UDP" {
 			protoCell = protoUDPStyle.Width(colProto).Render(p.Proto)
 		} else {
 			protoCell = protoTCPStyle.Width(colProto).Render(p.Proto)
 		}
-		processCell := lipgloss.NewStyle().Width(colProcess).Render(label)
-		pidCell := lipgloss.NewStyle().Width(colPID).Render(fmt.Sprintf("%d", p.PID))
-		userCell := userStyle.Width(colUser).Render(p.User)
-		addrCell := dimStyle.Width(colAddress).Render(p.Address)
-		return sel + portCell + " " + protoCell + " " + processCell + " " + pidCell + " " + userCell + " " + addrCell
+		return "  " +
+			portStyle.Width(colPort).Render(port) + " " +
+			protoCell + " " +
+			lipgloss.NewStyle().Width(colProcess).Render(label) + " " +
+			lipgloss.NewStyle().Width(colPID).Render(pid) + " " +
+			userStyle.Width(colUser).Render(user) + " " +
+			dimStyle.Width(colAddress).Render(addr)
 	}
 
-	// highlighted row — uniform style, no per-cell colors
 	return s.Width(colSel).Render("") +
-		s.Width(colPort).Render(fmt.Sprintf("%d", p.Port)) + " " +
+		s.Width(colPort).Render(port) + " " +
 		s.Width(colProto).Render(p.Proto) + " " +
 		s.Width(colProcess).Render(label) + " " +
-		s.Width(colPID).Render(fmt.Sprintf("%d", p.PID)) + " " +
-		s.Width(colUser).Render(p.User) + " " +
-		s.Width(colAddress).Render(p.Address)
+		s.Width(colPID).Render(pid) + " " +
+		s.Width(colUser).Render(user) + " " +
+		s.Width(colAddress).Render(addr)
 }
 
 func (m Model) View() string {
