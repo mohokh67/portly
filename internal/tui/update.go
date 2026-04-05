@@ -67,7 +67,7 @@ func (m Model) handleListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "q", "ctrl+c":
 		return m, tea.Quit
 
-	case "up":
+	case "up", "k":
 		if m.cursor > 0 {
 			m.cursor--
 		}
@@ -77,7 +77,7 @@ func (m Model) handleListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.cursor++
 		}
 
-	case "k":
+	case "x":
 		return m.startKillConfirm()
 
 	case " ":

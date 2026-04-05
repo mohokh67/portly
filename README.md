@@ -41,9 +41,9 @@ portly kill 3000        # kill immediately, no prompt
 
 | Key | Action |
 |-----|--------|
-| `↑` / `↓` | Navigate |
+| `↑` / `↓` / `k` / `j` | Navigate |
 | `Space` | Select / deselect row |
-| `k` | Kill selected (or current row) — shows confirm prompt |
+| `x` | Kill selected (or current row) — shows confirm prompt |
 | `t` | Toggle listening only / all connections |
 | `/` | Search by port number or process name |
 | `q` / `Ctrl+C` | Quit |

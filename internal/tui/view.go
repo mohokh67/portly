@@ -208,7 +208,7 @@ func (m Model) View() string {
 		}
 		b.WriteString(dimStyle.Render("press any key to continue") + "\n")
 	default:
-		b.WriteString(statusStyle.Width(w).Render(" ↑↓ navigate   space select   k kill   t toggle   / search   q quit") + "\n")
+		b.WriteString(statusStyle.Width(w).Render(" ↑↓/jk navigate   space select   x kill   t toggle   / search   q quit") + "\n")
 	}
 
 	return b.String()
